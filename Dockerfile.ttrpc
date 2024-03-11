@@ -1,0 +1,37 @@
+# Copyright (c) 2024 by Alibaba.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+FROM rust:latest as builder
+
+WORKDIR /usr/src/guest-components
+COPY ./coco-guest-components .
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y protobuf-compiler
+
+# Build and install confidential-data-hub
+RUN cd confidential-data-hub/ && make RESOURCE_PROVIDER=kbs,sev KMS_PROVIDER=aliyun,ehsm
+
+
+FROM ubuntu:22.04
+
+LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/attestation-agent"
+
+# TODO: gocryptfs will send log messages to the system's syslog service.
+#       And `SwitchToSyslog: Unix syslog delivery error` will occur.
+# Install ossfs, Gocryptofs and Runtime Dependencies
+RUN apt-get update && apt-get install -y wget gdebi-core fuse gocryptfs && \
+    wget https://gosspublic.alicdn.com/ossfs/ossfs_1.91.2_ubuntu22.04_amd64.deb && \
+    gdebi -n ossfs_1.91.2_ubuntu22.04_amd64.deb && \
+    rm ossfs_1.91.2_ubuntu22.04_amd64.deb && \
+    ln -s /usr/bin/gocryptfs /usr/local/bin/gocryptfs
+
+# Copy confidential-data-hub binary
+COPY --from=builder /usr/src/guest-components/target/x86_64-unknown-linux-gnu/release/confidential-data-hub /usr/local/bin/confidential-data-hub
+
+# Default Config File Path (/etc/confidential-data-hub.toml)
+VOLUME [ "/etc/" ]
+
+# Start confidential-data-hub with default unix sock (/run/confidential-containers/cdh.sock)
+CMD [ "confidential-data-hub" ]
