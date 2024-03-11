@@ -1,0 +1,27 @@
+# Copyright (c) 2024 by Alibaba.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+FROM rust:latest as builder
+
+WORKDIR /usr/src/guest-components
+COPY ./coco-guest-components .
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y protobuf-compiler 
+
+# Build and install attestation-agent
+RUN cd confidential-data-hub/
+
+RUN make RESOURCE_PROVIDER=kbs,sev KMS_PROVIDER=aliyun,ehsm
+
+
+FROM ubuntu:22.04
+
+LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/attestation-agent"
+
+# Copy attestation-agent binary
+COPY --from=builder /usr/src/guest-components/target/x86_64-unknown-linux-gnu/release/confidential-data-hub /usr/local/bin/confidential-data-hub
+
+# Start attestation-agent with default unix sock (/run/confidential-containers/cdh.sock)
+CMD [ "confidential-data-hub" ]
