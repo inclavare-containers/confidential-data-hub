@@ -24,10 +24,12 @@ RUN apt-get install -y protobuf-compiler
 
 # Build and install confidential-data-hub with specific configurations
 RUN cd confidential-data-hub && make RESOURCE_PROVIDER=kbs,sev KMS_PROVIDER=aliyun,ehsm RPC=grpc
-# RUN if [ "$BUILD_FOR_TEST" = "true" ]; then \
-#     cd confidential-data-hub/hub && \
-#     cargo build --bin grpc-cdh-tool --features bin,grpc --release; \
-# fi
+
+# Install ossfs, Gocryptofs and Runtime Dependencies
+RUN apt-get update && apt-get install -y wget gdebi-core fuse gocryptfs && \
+    wget https://gosspublic.alicdn.com/ossfs/ossfs_1.91.2_ubuntu22.04_amd64.deb && \
+    gdebi -n ossfs_1.91.2_ubuntu22.04_amd64.deb && \
+    rm ossfs_1.91.2_ubuntu22.04_amd64.deb 
 
 
 FROM ubuntu:22.04
@@ -36,19 +38,13 @@ ARG BUILD_FOR_TEST=false
 
 LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/confidential-data-hub"
 
-# TODO: gocryptfs will send log messages to the system's syslog service.
-#       And `SwitchToSyslog: Unix syslog delivery error` will occur.
-# Install ossfs, Gocryptofs and Runtime Dependencies
-RUN apt-get update && apt-get install -y wget gdebi-core fuse gocryptfs && \
-    wget https://gosspublic.alicdn.com/ossfs/ossfs_1.91.2_ubuntu22.04_amd64.deb && \
-    gdebi -n ossfs_1.91.2_ubuntu22.04_amd64.deb && \
-    rm ossfs_1.91.2_ubuntu22.04_amd64.deb && \
-    ln -s /usr/bin/gocryptfs /usr/local/bin/gocryptfs
-
+# Copy ossfs
+COPY --from=builder /usr/local/bin/ossfs /usr/local/bin/ossfs
+# Copy gocryptfs
+COPY --from=builder /usr/bin/gocryptfs /usr/bin/gocryptfs
+RUN ln -s /usr/bin/gocryptfs /usr/local/bin/gocryptfs
 # Copy confidential-data-hub binary
 COPY --from=builder /usr/src/guest-components/target/x86_64-unknown-linux-gnu/release/confidential-data-hub /usr/local/bin/confidential-data-hub
-# Copy grpc-cdh-tool binary (only for test)
-# COPY --from=builder /usr/src/guest-components/target/release/grpc-cdh-tool /usr/local/bin/grpc-cdh-tool
 
 # grpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
 RUN if [ "$BUILD_FOR_TEST" = "true" ]; then \
@@ -58,9 +54,9 @@ RUN if [ "$BUILD_FOR_TEST" = "true" ]; then \
 fi
 
 # Default Config File Path (/etc/confidential-data-hub.toml)
-VOLUME [ "/etc/" ]
+VOLUME [ "/etc/confidential-data-hub.toml" ]
 
-# Start confidential-data-hub with default unix sock (/run/confidential-containers/cdh.sock)
+# Start confidential-data-hub listening to request: 127.0.0.1:50000
 CMD [ "confidential-data-hub" ]
 
 EXPOSE 50000
