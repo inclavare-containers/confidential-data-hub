@@ -9,6 +9,7 @@ FROM rust:latest as builder
 # Define the default commit of source code
 # ARG CDH_COMMIT=ed809e5
 ARG CDH_COMMIT=HEAD
+ARG BUILD_FOR_TEST=false
 
 # Set the working directory inside the container
 WORKDIR /usr/src/guest-components
@@ -23,13 +24,18 @@ RUN apt-get install -y protobuf-compiler
 
 # Build and install confidential-data-hub with specific configurations
 RUN cd confidential-data-hub && make RESOURCE_PROVIDER=kbs,sev KMS_PROVIDER=aliyun,ehsm RPC=ttrpc
-RUN cd confidential-data-hub/hub && cargo build --bin ttrpc-cdh-tool --features bin,ttrpc
+# RUN if [ "$BUILD_FOR_TEST" = "true" ]; then \
+#     cd confidential-data-hub/hub && \
+#     cargo build --bin ttrpc-cdh-tool --features bin,ttrpc --release; \
+# fi
 
 
 
 FROM ubuntu:22.04
 
-LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/attestation-agent"
+ARG BUILD_FOR_TEST=false
+
+LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/confidential-data-hub"
 
 # TODO: gocryptfs will send log messages to the system's syslog service.
 #       And `SwitchToSyslog: Unix syslog delivery error` will occur.
@@ -42,13 +48,15 @@ RUN apt-get update && apt-get install -y wget gdebi-core fuse gocryptfs && \
 
 # Copy confidential-data-hub binary
 COPY --from=builder /usr/src/guest-components/target/x86_64-unknown-linux-gnu/release/confidential-data-hub /usr/local/bin/confidential-data-hub
-# Copy ttrpc-cdh-tool binary
-COPY --from=builder /usr/src/guest-components/target/debug/ttrpc-cdh-tool /usr/local/bin/ttrpc-cdh-tool
+# Copy ttrpc-cdh-tool binary (only for test)
+# COPY --from=builder /usr/src/guest-components/target/release/ttrpc-cdh-tool /usr/local/bin/ttrpc-cdh-tool
 
 # ttrpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
-RUN echo '{ \
+RUN if [ "$BUILD_FOR_TEST" = "true" ]; then \
+    echo '{ \
     "default/key/1": "cGFzc3BocmFzZXdoaWNobmVlZHN0b2JlMzJieXRlcyE=" \
-}' > /etc/aa-offline_fs_kbc-resources.json
+    }' > /etc/aa-offline_fs_kbc-resources.json; \
+fi
 
 # Default Config File Path (/etc/confidential-data-hub.toml)
 VOLUME [ "/etc/" ]

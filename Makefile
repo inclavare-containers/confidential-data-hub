@@ -1,5 +1,7 @@
 CDH_COMMIT ?=
 
+TEST ?= false
+
 default_cdh_commit := ed809e5
 
 ifeq ($(CDH_COMMIT),)
@@ -25,11 +27,11 @@ build: build-grpc build-ttrpc ## Build the confidential-data-hub images with CDH
 build-grpc: ## Build the confidential-data-hub grpc image with CDH_COMMIT to set the commit to build
 	@echo "\033[1;32mBuilding the confidential-data-hub for grpc with the commit $(cdh_commit) ...\033[0m"
 	docker build \
-	    $(no_cache) --build-arg CDH_COMMIT=$(cdh_commit) \
+	    $(no_cache) --build-arg CDH_COMMIT=$(cdh_commit) --build-arg BUILD_FOR_TEST=$(TEST)\
 	    -f ./Dockerfile.grpc -t confidential-data-hub:grpc .
 
 build-ttrpc: ## Build the confidential-data-hub ttrpc image with CDH_COMMIT to set the commit to build
 	@echo "\033[1;32mBuilding the confidential-data-hub for ttrpc with the commit $(cdh_commit) ...\033[0m"
 	docker build \
-	    $(no_cache) --build-arg CDH_COMMIT=$(cdh_commit) \
+	    $(no_cache) --build-arg CDH_COMMIT=$(cdh_commit) --build-arg BUILD_FOR_TEST=$(TEST)\
 	    -f ./Dockerfile.ttrpc -t confidential-data-hub:ttrpc .
