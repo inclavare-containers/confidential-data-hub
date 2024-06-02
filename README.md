@@ -57,17 +57,21 @@ docker run -d -v /run/confidential-containers:/run/confidential-containers \
 ### Run Tests
 
 ```shell
-# grpc
-# terminal 1
-make build-grpc TEST=true
-docker run --rm --network host confidential-data-hub:grpc
-# terminal 2
-grpc-cdh-tool get-resource --resource-uri kbs://127.0.0.1:50000/default/key/1
+# test cdh-grpc
+# open terminal 1
+# create resource file for test
+echo '{ "default/key/1": "cGFzc3BocmFzZXdoaWNobmVlZHN0b2JlMzJieXRlcyE=" }' > /etc/aa-offline_fs_kbc-resources.json
+make build-grpc
+docker run --rm --network host -v /etc/aa-offline_fs_kbc-resources.json:/etc/aa-offline_fs_kbc-resources.json confidential-data-hub:grpc
+# open terminal 2
+grpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
 
-# ttrpc
-# terminal 1
-make build-ttrpc TEST=true
+# test cdh-ttrpc
+# open terminal 1
+# create resource file for test
+echo '{ "default/key/1": "cGFzc3BocmFzZXdoaWNobmVlZHN0b2JlMzJieXRlcyE=" }' > /etc/aa-offline_fs_kbc-resources.json
+make build-ttrpc
 docker run --rm -v /run/confidential-containers:/run/confidential-containers confidential-data-hub:ttrpc
-# terminal 2
+# open terminal 2
 ttrpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
 ```
