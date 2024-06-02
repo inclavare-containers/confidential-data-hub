@@ -7,9 +7,7 @@ FROM rust:latest as builder
 
 # The list of build argument with docker build --build-arg NAME=VALUE
 # Define the default commit of source code
-# ARG CDH_COMMIT=ed809e5
 ARG CDH_COMMIT=HEAD
-ARG BUILD_FOR_TEST=false
 
 # Set the working directory inside the container
 WORKDIR /usr/src/guest-components
@@ -34,24 +32,16 @@ RUN apt-get update && apt-get install -y wget gdebi-core fuse gocryptfs && \
 
 FROM ubuntu:22.04
 
-ARG BUILD_FOR_TEST=false
 
 LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/confidential-data-hub"
 
 # Copy ossfs
 COPY --from=builder /usr/local/bin/ossfs /usr/local/bin/ossfs
 # Copy gocryptfs
-COPY --from=builder /usr/bin/gocryptfs /usr/bin/gocryptfs
-RUN ln -s /usr/bin/gocryptfs /usr/local/bin/gocryptfs
+COPY --from=builder /usr/bin/gocryptfs /usr/local/bin/gocryptfs
 # Copy confidential-data-hub binary
 COPY --from=builder /usr/src/guest-components/target/x86_64-unknown-linux-gnu/release/confidential-data-hub /usr/local/bin/confidential-data-hub
 
-# grpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
-RUN if [ "$BUILD_FOR_TEST" = "true" ]; then \
-    echo '{ \
-    "default/key/1": "cGFzc3BocmFzZXdoaWNobmVlZHN0b2JlMzJieXRlcyE=" \
-    }' > /etc/aa-offline_fs_kbc-resources.json; \
-fi
 
 # Default Config File Path (/etc/confidential-data-hub.toml)
 VOLUME [ "/etc/confidential-data-hub.toml" ]
