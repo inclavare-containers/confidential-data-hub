@@ -71,7 +71,7 @@ grpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
 # create resource file for test
 echo '{ "default/key/1": "cGFzc3BocmFzZXdoaWNobmVlZHN0b2JlMzJieXRlcyE=" }' > /etc/aa-offline_fs_kbc-resources.json
 make build-ttrpc
-docker run --rm -v /run/confidential-containers:/run/confidential-containers confidential-data-hub:ttrpc
+docker run --rm -v /etc/aa-offline_fs_kbc-resources.json:/etc/aa-offline_fs_kbc-resources.json -v /run/confidential-containers:/run/confidential-containers confidential-data-hub:ttrpc
 # open terminal 2
 ttrpc-cdh-tool get-resource --resource-uri kbs:///default/key/1
 ```
