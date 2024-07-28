@@ -1,4 +1,4 @@
-CDH_COMMIT ?= ed809e5
+CDH_COMMIT ?= bf7ccd301d3f50bfcb4cc9e38ae187141ce35072
 
 .PHONE: all build build-image-grpc build-image-ttrpc
 
